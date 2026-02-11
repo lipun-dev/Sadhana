@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "781055051108",
+    "project_id": "pomodora-6d337",
+    "storage_bucket": "pomodora-6d337.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:781055051108:android:479c88ccbc7440d614e671",
+        "android_client_info": {
+          "package_name": "com.example.pomodora"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDcFBWRpB9FdzbqIDxcWyPM9mwW0CItEO0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
