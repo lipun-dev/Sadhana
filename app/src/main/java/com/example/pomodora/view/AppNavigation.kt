@@ -16,8 +16,13 @@ fun AppNavigation(viewModel: AuthViewModel) {
 
     // Check current user session
 
+    val startDestination = if (viewModel.isUserLoggedIn()) {
+        NavigationItem.HomeScreen
+    } else {
+        NavigationItem.LoginScreen
+    }
 
-    NavHost(navController = navController, startDestination = NavigationItem.LoginScreen) {
+    NavHost(navController = navController, startDestination = startDestination) {
 
         composable<NavigationItem.LoginScreen> {
             LoginScreen(navController = navController, viewModel = viewModel)

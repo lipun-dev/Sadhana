@@ -4,6 +4,7 @@ import com.example.pomodora.model.ResultState
 import com.example.pomodora.model.USERS
 import com.example.pomodora.model.UserProfile
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
@@ -12,6 +13,8 @@ class AuthRepo{
     private val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
 
+    val currentUser: FirebaseUser?
+        get() = auth.currentUser
     // Login Function
     suspend fun loginUser(email: String, pass: String): ResultState<UserProfile> {
         return try {
@@ -53,5 +56,9 @@ class AuthRepo{
         } catch (e: Exception) {
             ResultState.Error(e.message ?: "An unknown error occurred")
         }
+    }
+
+    fun signOut() {
+        auth.signOut()
     }
 }

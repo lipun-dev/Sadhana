@@ -18,6 +18,10 @@ class AuthViewModel : ViewModel() {
     private val _authState = MutableStateFlow<ResultState<UserProfile>>(ResultState.Idle)
     val authState: StateFlow<ResultState<UserProfile>> = _authState.asStateFlow()
 
+    fun isUserLoggedIn(): Boolean {
+        return repository.currentUser != null
+    }
+
     fun login(email: String, pass: String) {
         if (email.isBlank() || pass.isBlank()) {
             _authState.value = ResultState.Error("Please fill all fields")
@@ -40,6 +44,11 @@ class AuthViewModel : ViewModel() {
         viewModelScope.launch {
             _authState.value = repository.signUpUser(email, pass)
         }
+    }
+
+    fun logout() {
+        repository.signOut()
+        _authState.value = ResultState.Idle // Reset state
     }
 
     fun resetState() {
