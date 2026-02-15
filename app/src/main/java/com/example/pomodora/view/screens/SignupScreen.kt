@@ -54,7 +54,7 @@ fun SignUpScreen(
         when (authState) {
             is ResultState.Success -> {
                 Toast.makeText(context, "Account Created!", Toast.LENGTH_SHORT).show()
-                navController.navigate(NavigationItem.HomeScreen) {
+                navController.navigate(NavigationItem.Dashboard) {
                     popUpTo(NavigationItem.SignUpScreen) { inclusive = true }
                 }
             }

@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 sealed class NavigationItem {
     @Serializable
-    object FocusScreen: NavigationItem()
+    object Dashboard : NavigationItem()
 
     @Serializable
     object LoginScreen: NavigationItem()
@@ -12,6 +12,5 @@ sealed class NavigationItem {
     @Serializable
     object SignUpScreen: NavigationItem()
 
-    @Serializable
-    object HomeScreen: NavigationItem()
+
 }

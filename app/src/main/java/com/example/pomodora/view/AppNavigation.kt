@@ -4,9 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.pomodora.view.screens.FocusScreen
-import com.example.pomodora.view.screens.HomeScreen
 import com.example.pomodora.view.screens.LoginScreen
+import com.example.pomodora.view.screens.MainDashboardScreen
 import com.example.pomodora.view.screens.SignUpScreen
 import com.example.pomodora.viewModel.AuthViewModel
 
@@ -17,7 +16,7 @@ fun AppNavigation(viewModel: AuthViewModel) {
     // Check current user session
 
     val startDestination = if (viewModel.isUserLoggedIn()) {
-        NavigationItem.HomeScreen
+        NavigationItem.Dashboard
     } else {
         NavigationItem.LoginScreen
     }
@@ -32,12 +31,8 @@ fun AppNavigation(viewModel: AuthViewModel) {
             SignUpScreen(navController = navController, viewModel =viewModel )
         }
 
-        composable<NavigationItem.HomeScreen> {
-            HomeScreen(navController)
-        }
-
-        composable<NavigationItem.FocusScreen> {
-            FocusScreen()
+        composable<NavigationItem.Dashboard> {
+            MainDashboardScreen(navController = navController)
         }
     }
 }

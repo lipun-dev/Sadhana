@@ -25,7 +25,7 @@ fun HomeScreen(navController: NavController) {
 
         Text(text = "HomeScreen")
         Spacer(modifier = Modifier.height(20.dp))
-        Button(onClick = {navController.navigate(NavigationItem.FocusScreen) }) {
+        Button(onClick = {}) {
             Text(text = "FocusScreen")
         }
 

@@ -64,7 +64,7 @@ fun LoginScreen(
             is ResultState.Success -> {
                 val user = (authState as ResultState.Success).data
                 Toast.makeText(context, "Welcome back, ${user.email}!", Toast.LENGTH_SHORT).show()
-                navController.navigate(NavigationItem.HomeScreen) {
+                navController.navigate(NavigationItem.Dashboard) {
                     popUpTo(NavigationItem.LoginScreen) { inclusive = true }
                 }
             }
