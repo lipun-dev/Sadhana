@@ -57,13 +57,15 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.navigation.NavController
 import com.example.pomodora.view.DashboardTab
+import com.example.pomodora.viewModel.AuthViewModel
 import kotlinx.coroutines.launch
 
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun MainDashboardScreen(
-    navController: NavController, // Pass this if Home/Focus need to navigate elsewhere
+    navController: NavController,
+    viewModel: AuthViewModel// Pass this if Home/Focus need to navigate elsewhere
 ) {
     val pagerState = rememberPagerState(pageCount = { DashboardTab.entries.size }, initialPage = 1)
     val scope = rememberCoroutineScope()
@@ -182,7 +184,7 @@ fun MainDashboardScreen(
             contentPadding = PaddingValues(0.dp) // Reset padding
         ) { pageIndex ->
             when (DashboardTab.getByIndex(pageIndex)) {
-                DashboardTab.Home -> HomeScreen(navController)
+                DashboardTab.Home -> HomeScreen(navController,viewModel)
                 DashboardTab.Focus -> FocusScreen()
                 DashboardTab.Profile -> {}
             }

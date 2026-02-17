@@ -32,7 +32,7 @@ fun AppNavigation(viewModel: AuthViewModel) {
         }
 
         composable<NavigationItem.Dashboard> {
-            MainDashboardScreen(navController = navController)
+            MainDashboardScreen(navController = navController,viewModel)
         }
     }
 }

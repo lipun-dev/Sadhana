@@ -13,9 +13,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.pomodora.view.NavigationItem
+import com.example.pomodora.viewModel.AuthViewModel
 
 @Composable
-fun HomeScreen(navController: NavController) {
+fun HomeScreen(navController: NavController,viewModel: AuthViewModel) {
 
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -25,7 +26,10 @@ fun HomeScreen(navController: NavController) {
 
         Text(text = "HomeScreen")
         Spacer(modifier = Modifier.height(20.dp))
-        Button(onClick = {}) {
+        Button(onClick = {
+            viewModel.logout()
+            navController.navigate(NavigationItem.LoginScreen)
+        }) {
             Text(text = "FocusScreen")
         }
 
