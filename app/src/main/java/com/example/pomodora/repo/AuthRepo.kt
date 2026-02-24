@@ -8,10 +8,9 @@ import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
-class AuthRepo{
+class AuthRepo(private val auth: FirebaseAuth,
+    private val firestore: FirebaseFirestore){
 
-    private val auth = FirebaseAuth.getInstance()
-    private val firestore = FirebaseFirestore.getInstance()
 
     val currentUser: FirebaseUser?
         get() = auth.currentUser
@@ -60,5 +59,16 @@ class AuthRepo{
 
     fun signOut() {
         auth.signOut()
+    }
+
+    suspend fun getUserProfile(): ResultState<UserProfile> {
+        return try {
+            val user = auth.currentUser ?: return ResultState.Error("Not logged in")
+            val doc = firestore.collection(USERS).document(user.uid).get().await()
+            val email = doc.getString("email") ?: user.email ?: ""
+            ResultState.Success(UserProfile(userId = user.uid, email = email))
+        } catch (e: Exception) {
+            ResultState.Error(e.message ?: "Failed to load profile")
+        }
     }
 }

@@ -1,5 +1,8 @@
 package com.example.pomodora.view.screens
 
+import android.graphics.Matrix
+import android.graphics.RadialGradient
+import android.graphics.Shader
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.expandHorizontally
@@ -8,6 +11,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -21,20 +25,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.FloatingToolbarDefaults.ScreenOffset
-import androidx.compose.material3.FloatingToolbarHorizontalFabPosition
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
@@ -49,15 +48,27 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.navigation.NavController
+import com.example.pomodora.ui.theme.AppBackground
 import com.example.pomodora.view.DashboardTab
 import com.example.pomodora.viewModel.AuthViewModel
+import com.example.pomodora.viewModel.StatsViewModel
 import kotlinx.coroutines.launch
 
 
@@ -65,7 +76,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun MainDashboardScreen(
     navController: NavController,
-    viewModel: AuthViewModel// Pass this if Home/Focus need to navigate elsewhere
+    viewModel: AuthViewModel, // Pass this if Home/Focus need to navigate elsewhere
+    statsViewModel: StatsViewModel
 ) {
     val pagerState = rememberPagerState(pageCount = { DashboardTab.entries.size }, initialPage = 1)
     val scope = rememberCoroutineScope()
@@ -76,6 +88,7 @@ fun MainDashboardScreen(
     val isToolbarVisible = true
 
     Scaffold(
+        containerColor = AppBackground,
         // 1. MOVE TOOLBAR HERE
         bottomBar = {
             // We use a Box inside bottomBar to control the "Floating" position
@@ -95,7 +108,7 @@ fun MainDashboardScreen(
                         // FIX: Force symmetric padding (removes the empty space for FAB)
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                         colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors(
-                            toolbarContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            toolbarContainerColor = Color.Transparent,
                             toolbarContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                         ),
                         modifier = Modifier
@@ -104,7 +117,23 @@ fun MainDashboardScreen(
                                 bottom = bottomInset
                                         + ScreenOffset
                             )
-                            .zIndex(1f),
+                            .zIndex(1f)
+                            .coloredBlurShadow(
+                                color = Color(0xFF598852),
+                                blurRadius = 15.dp,
+                                offsetX = 1.dp,
+                                offsetY = 0.dp
+                            )
+                            .background(
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    Color(0xFF021A32),
+                                    Color(0xFF15850D),
+                                    Color(0xFF021A35)
+                                )
+                            ),
+                            shape = CircleShape
+                        ),
                         content = {
                             DashboardTab.entries.forEach { tab ->
                                 val isSelected = pagerState.currentPage == tab.index
@@ -126,12 +155,16 @@ fun MainDashboardScreen(
                                         },
                                         modifier = Modifier
                                             .widthIn(min = 64.dp)
-                                            .height(56.dp),
+                                            .height(56.dp)
+                                            .background(
+                                                brush = if (isSelected) ellipticalBrush else SolidColor(Color.Transparent),
+                                                shape = CircleShape
+                                            ),
                                         shapes = ToggleButtonDefaults.shapes(CircleShape, CircleShape, CircleShape),
                                         colors = ToggleButtonDefaults.toggleButtonColors(
-                                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                            containerColor = Color.Transparent,
                                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                            checkedContainerColor = Color.Transparent,
                                             checkedContentColor = MaterialTheme.colorScheme.onPrimary
                                         )
                                     ) {
@@ -184,10 +217,77 @@ fun MainDashboardScreen(
             contentPadding = PaddingValues(0.dp) // Reset padding
         ) { pageIndex ->
             when (DashboardTab.getByIndex(pageIndex)) {
-                DashboardTab.Home -> HomeScreen(navController,viewModel)
+                DashboardTab.Stats -> StatisticScreen(navController,statsViewModel)
                 DashboardTab.Focus -> FocusScreen()
-                DashboardTab.Profile -> {}
+                DashboardTab.Profile -> ProfileScreen(navController = navController, viewModel = viewModel)
             }
         }
     }
+}
+
+
+fun Modifier.coloredBlurShadow(
+    color: Color,
+    blurRadius: Dp,
+    shapeRadius: Dp = 100.dp, // High value ensures a perfect pill shape
+    offsetX: Dp = 0.dp,
+    offsetY: Dp = 0.dp
+) = this.drawBehind {
+    val paint = Paint().apply {
+        val frameworkPaint = asFrameworkPaint()
+        frameworkPaint.color = android.graphics.Color.WHITE
+        frameworkPaint.setShadowLayer(
+            blurRadius.toPx(),
+            offsetX.toPx(),
+            offsetY.toPx(), // Y offset
+            color.toArgb()
+        )
+    }
+    drawIntoCanvas { canvas ->
+        canvas.drawRoundRect(
+            left = 0f,
+            top = 0f,
+            right = size.width,
+            bottom = size.height,
+            radiusX = shapeRadius.toPx(),
+            radiusY = shapeRadius.toPx(),
+            paint = paint
+        )
+    }
+}
+
+val colorCenter = Color(0x8FFAFAFA).toArgb()
+val colorEdge = Color(0xFF358435).toArgb()
+
+val ellipticalBrush = object : ShaderBrush() {
+    override fun createShader(size: Size): Shader {
+        val centerX = size.width / 2f
+        val centerY = size.height / 2f
+
+        // 1. Set the radius to half the width so it reaches the far left and right edges
+        val radius = (size.width / 2f).coerceAtLeast(1f)
+
+        val shader = RadialGradient(
+            centerX,
+            centerY,
+            radius,
+            intArrayOf(colorCenter, colorEdge),
+            // 2. Adjust these stops: 0.75f means the inner 75% is solid FAFAFA,
+            // fading smoothly into the green edge for the last 25%
+            floatArrayOf(0.20f, 1.0f),
+            Shader.TileMode.CLAMP
+        )
+
+        // 3. The Magic: Scale the gradient vertically so it matches the pill's aspect ratio
+        val matrix = Matrix()
+        if (size.width > 0f) {
+            val scaleY = size.height / size.width
+            matrix.setScale(1f, scaleY, centerX, centerY)
+            shader.setLocalMatrix(matrix)
+        }
+
+        return shader
+    }
+
+
 }

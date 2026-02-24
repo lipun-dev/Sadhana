@@ -1,6 +1,8 @@
 package com.example.pomodora.view.screens
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -10,28 +12,34 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -41,40 +49,49 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.pomodora.services.PermissionHelper
 import com.example.pomodora.services.TimerState
+import com.example.pomodora.ui.theme.FocusAccentGreen
+import com.example.pomodora.ui.theme.FocusBgDeep
+import com.example.pomodora.ui.theme.FocusBreakBlue
+import com.example.pomodora.ui.theme.GlowGreen
+import com.example.pomodora.ui.theme.TextPrimary
+import com.example.pomodora.view.FocusUtil.MorphingActionButton
+import com.example.pomodora.view.FocusUtil.PolishedPermissionCard
+import com.example.pomodora.view.FocusUtil.PolishedTimerDisplay
+import com.example.pomodora.view.FocusUtil.PolishedWaveTimer
+import com.example.pomodora.view.FocusUtil.SessionProgressDots
 import com.example.pomodora.view.utils.GrowingTreeIcon
-import com.example.pomodora.view.utils.TimerDisplayBox
 import com.example.pomodora.viewModel.FocusViewModel
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FocusScreen(
     viewModel: FocusViewModel = viewModel<FocusViewModel>()
 ) {
     val timerState by viewModel.timerState.collectAsState()
-    val timeLeft by viewModel.timeLeft.collectAsState()
-    val context = LocalContext.current
+    val timeLeft   by viewModel.timeLeft.collectAsState()
+    val context    = LocalContext.current
 
-    // State to track permissions
     var hasPermissions by remember { mutableStateOf(false) }
-
     val lifecycleOwner = LocalLifecycleOwner.current
+
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
@@ -85,265 +102,252 @@ fun FocusScreen(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
-    // Constants for Max Time (to calculate progress)
+
     val totalFocusTime = 25 * 60 * 1000L
-    val totalBreakTime = 5 * 60 * 1000L
+    val totalBreakTime = 5  * 60 * 1000L
 
-    // Calculate progress (0.0 to 1.0)
     val progress = remember(timeLeft, timerState) {
-        val totalTime = if (timerState is TimerState.OnBreak) totalBreakTime else totalFocusTime
-
-        // Logic: (Total - Left) / Total gives us 0.0 at start, 1.0 at finish
-        val elapsed = totalTime - timeLeft
-        val fraction = elapsed.toFloat() / totalTime
-
-        fraction.coerceIn(0f, 1f)
+        val total   = if (timerState is TimerState.OnBreak) totalBreakTime else totalFocusTime
+        val elapsed = total - timeLeft
+        (elapsed.toFloat() / total).coerceIn(0f, 1f)
     }
 
-    val animatedProgress by animateFloatAsState(targetValue = progress, label = "Progress")
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(300, easing = LinearEasing),
+        label = "RingProgress"
+    )
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
+    val isFocusing = timerState is TimerState.Focusing
+    val isOnBreak  = timerState is TimerState.OnBreak
 
-        // --- Circular Timer ---
-        Box(contentAlignment = Alignment.Center) {
-            ExpressiveWaveTimer(
-                progress = animatedProgress
-            )
-            GrowingTreeIcon(progress = animatedProgress, timerState = timerState)
+    // Ambient ring color transitions between states
+    val ringColor by animateColorAsState(
+        targetValue = when {
+            isOnBreak  -> FocusBreakBlue
+            isFocusing -> GlowGreen
+            else       -> FocusAccentGreen
+        },
+        animationSpec = tween(600),
+        label = "RingColor"
+    )
 
-        }
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
-        TimerDisplayBox(timeString = formatTime(timeLeft))
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = FocusBgDeep,
+        topBar = { FocusTopAppBar(timerState = timerState,
+            scrollBehavior) }
+    ) { innerPadding ->
 
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            AmbientGlow(color = ringColor, isFocusing = isFocusing || isOnBreak)
 
-        Spacer(modifier = Modifier.height(48.dp))
-        if (!hasPermissions) {
-            // Permission Warning Card
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                modifier = Modifier.padding(16.dp)
+            // CHANGE 2: verticalScroll — content never hidden behind bottom nav.
+            // Bottom padding 100.dp clears any system nav bar / bottom nav height.
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp)
+                    .padding(top = 16.dp, bottom = 100.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Permissions Required", fontWeight = FontWeight.Bold)
-                    Text("To prevent you from quitting, we need 'Usage Access' and 'Display Over Other Apps'.")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(onClick = {
-                        if (!PermissionHelper.hasUsageStatsPermission(context)) {
-                            PermissionHelper.requestUsageStatsPermission(context)
-                        } else if (!PermissionHelper.hasOverlayPermission(context)) {
-                            PermissionHelper.requestOverlayPermission(context)
+
+                // Timer ring
+                Box(contentAlignment = Alignment.Center) {
+                    PulseRings(color = ringColor, active = isFocusing)
+                    PolishedWaveTimer(
+                        progress   = animatedProgress,
+                        ringColor  = ringColor,
+                        timerState = timerState
+                    )
+                    GrowingTreeIcon(progress = animatedProgress, timerState = timerState)
+                }
+
+                Spacer(modifier = Modifier.height(30.dp))
+
+                PolishedTimerDisplay(
+                    timeString = formatTime(timeLeft),
+                    timerState = timerState,
+                    ringColor  = ringColor
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                SessionProgressDots(progress = animatedProgress, color = ringColor)
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // CHANGE 3: Single morphing button replaces two-button row
+                AnimatedContent(
+                    targetState = hasPermissions,
+                    transitionSpec = {
+                        fadeIn(tween(400)) + slideInVertically { it / 4 } togetherWith
+                                fadeOut(tween(200))
+                    },
+                    label = "PermissionSwitch"
+                ) { hasPerm ->
+                    if (!hasPerm) {
+                        PolishedPermissionCard {
+                            if (!PermissionHelper.hasUsageStatsPermission(context))
+                                PermissionHelper.requestUsageStatsPermission(context)
+                            else if (!PermissionHelper.hasOverlayPermission(context))
+                                PermissionHelper.requestOverlayPermission(context)
                         }
-                    }) {
-                        Text("Grant Permissions")
+                    } else {
+                        // CHANGE 3: ONE MorphingActionButton for all states
+                        MorphingActionButton(
+                            timerState  = timerState,
+                            onStart     = { viewModel.startFocus() },
+                            onGiveUp    = { viewModel.giveUp() },
+                            onTakeBreak = { viewModel.startBreak() }
+                        )
                     }
                 }
             }
-        } else {
-
-            AnimatedFocusButtons(
-                timerState = timerState,
-                onStart = { viewModel.startFocus() },
-                onGiveUp = { viewModel.giveUp() },
-                onTakeBreak = { viewModel.startBreak() }
-            )
         }
+    }
+}
 
 
 
+
+
+@Composable
+fun AmbientGlow(color: Color, isFocusing: Boolean) {
+    val infiniteTransition = rememberInfiniteTransition(label = "AmbientPulse")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.04f,
+        targetValue  = if (isFocusing) 0.10f else 0.06f,
+        animationSpec = infiniteRepeatable(
+            animation  = tween(3000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "AmbientAlpha"
+    )
+
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        drawCircle(
+            brush  = Brush.radialGradient(
+                colors = listOf(color.copy(alpha = alpha), Color.Transparent),
+                center = Offset(size.width / 2f, size.height * 0.38f),
+                radius = size.width * 0.75f
+            ),
+            radius = size.width * 0.75f,
+            center = Offset(size.width / 2f, size.height * 0.38f)
+        )
+    }
+}
+
+// ─── Concentric Pulse Rings ───────────────────────────────────────────────────
+
+@Composable
+fun PulseRings(color: Color, active: Boolean) {
+    if (!active) return
+
+    val infiniteTransition = rememberInfiniteTransition(label = "PulseRings")
+
+    val scale1 by infiniteTransition.animateFloat(
+        initialValue = 0.82f, targetValue = 1.12f,
+        animationSpec = infiniteRepeatable(tween(2400, easing = FastOutSlowInEasing), RepeatMode.Restart),
+        label = "Scale1"
+    )
+    val alpha1 by infiniteTransition.animateFloat(
+        initialValue = 0.18f, targetValue = 0f,
+        animationSpec = infiniteRepeatable(tween(2400, easing = FastOutSlowInEasing), RepeatMode.Restart),
+        label = "Alpha1"
+    )
+    val scale2 by infiniteTransition.animateFloat(
+        initialValue = 0.82f, targetValue = 1.18f,
+        animationSpec = infiniteRepeatable(
+            tween(2400, delayMillis = 800, easing = FastOutSlowInEasing), RepeatMode.Restart
+        ),
+        label = "Scale2"
+    )
+    val alpha2 by infiniteTransition.animateFloat(
+        initialValue = 0.12f, targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            tween(2400, delayMillis = 800, easing = FastOutSlowInEasing), RepeatMode.Restart
+        ),
+        label = "Alpha2"
+    )
+
+    Box(
+        modifier = Modifier.size(300.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(300.dp)
+                .scale(scale1)
+                .clip(CircleShape)
+                .border(1.5.dp, color.copy(alpha = alpha1), CircleShape)
+        )
+        Box(
+            modifier = Modifier
+                .size(300.dp)
+                .scale(scale2)
+                .clip(CircleShape)
+                .border(1.dp, color.copy(alpha = alpha2), CircleShape)
+        )
     }
 }
 
 // --- Helper Components ---
 
+@OptIn( ExperimentalMaterial3Api::class)
 @Composable
-fun ExpressiveWaveTimer(
-    progress: Float,
-    modifier: Modifier = Modifier
-) {
-    // 1. Infinite transition for the wave motion
-    val trackThickness = 24.dp
-    val activeIndicatorHeight = 24.dp // Stroke width of the wave
-    val waveAmplitude = 10.dp         // Deviation from center
-    val waveLength = 65.dp           // Distance between peaks
-    val gapInDegrees = 20f
-
-    // --- Colors ---
-    val activeColor = MaterialTheme.colorScheme.primary
-    val trackColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-
-    // --- Animation ---
-    val infiniteTransition = rememberInfiniteTransition(label = "WaveTransition")
-
-    // Animate phase to make the wave "flow"
-    // We animate from 0 to 2*PI (one full cycle)
-    val wavePhase by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 2 * Math.PI.toFloat(),
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "WavePhase"
-    )
-
-    Canvas(modifier = modifier.size(300.dp)) {
-        val trackThicknessPx = trackThickness.toPx()
-        val waveStrokePx = activeIndicatorHeight.toPx()
-        val amplitudePx = waveAmplitude.toPx()
-        val waveLengthPx = waveLength.toPx()
-
-        val sizeMin = size.minDimension
-        val radius = (sizeMin - trackThicknessPx - (amplitudePx * 2)) / 2
-        val center = Offset(size.width / 2, size.height / 2)
-
-        val startAngle = -90f // Top center
-        val totalSweep = 360f
-        val activeSweepAngle = totalSweep * progress
-
-        // -------------------------------------------------------
-        // 1. Draw the TRACK (With Gaps)
-        // -------------------------------------------------------
-        // We add a gap at the START (where it meets the wave head)
-        // And we subtract a gap at the END (where it wraps to the wave tail)
-
-        val trackStartAngle = startAngle + activeSweepAngle + gapInDegrees
-        // Calculate remaining sweep, removing the gap from BOTH ends
-        val trackSweepAngle = (totalSweep - activeSweepAngle) - (gapInDegrees * 2)
-
-        if (trackSweepAngle > 1f) { // Only draw if there is track left
-            drawArc(
-                color = trackColor,
-                startAngle = trackStartAngle,
-                sweepAngle = trackSweepAngle,
-                useCenter = false,
-                topLeft = Offset(center.x - radius, center.y - radius),
-                size = Size(radius * 2, radius * 2),
-                style = Stroke(width = trackThicknessPx, cap = StrokeCap.Round)
-                // Using 'Butt' cap so it connects cleanly to the wave
-            )
-        }
-
-        // -------------------------------------------------------
-        // 2. Draw the ACTIVE WAVE (The "Elapsed" Time)
-        // -------------------------------------------------------
-        if (progress > 0) {
-            val path = Path()
-
-            val circumference = 2 * Math.PI * radius
-            val waveCount = (circumference / waveLengthPx).toFloat()
-            val steps = (activeSweepAngle * 2).toInt().coerceAtLeast(2)
-
-            for (i in 0..steps) {
-                val currentAngleDeg = startAngle + (activeSweepAngle * (i.toFloat() / steps))
-                val angleRad = Math.toRadians(currentAngleDeg.toDouble()).toFloat()
-
-                val waveOffset = kotlin.math.sin(angleRad * waveCount + wavePhase) * amplitudePx
-                val r = radius + waveOffset
-
-                val x = center.x + r * kotlin.math.cos(angleRad)
-                val y = center.y + r * kotlin.math.sin(angleRad)
-
-                if (i == 0) {
-                    path.moveTo(x, y)
-                } else {
-                    path.lineTo(x, y)
-                }
-            }
-
-            drawPath(
-                path = path,
-                color = activeColor,
-                style = Stroke(
-                    width = waveStrokePx,
-                    cap = StrokeCap.Round,
-                    join = StrokeJoin.Round
-                )
-            )
-        }
+fun FocusTopAppBar(timerState: TimerState,scrollBehavior: TopAppBarScrollBehavior) {
+    val titleText = when (timerState) {
+        is TimerState.Focusing        -> "Deep Focus"
+        is TimerState.OnBreak         -> "Rest & Recharge"
+        is TimerState.WaitingForBreak -> "Session Complete"
+        else                          -> "Ready to Plant"
     }
-}
 
 
-@Composable
-fun AnimatedFocusButtons(
-    timerState: TimerState,
-    onStart: () -> Unit,
-    onGiveUp: () -> Unit,
-    onTakeBreak: () -> Unit
-) {
-    val isFocusing = timerState is TimerState.Focusing
-    val isIdle = timerState is TimerState.Idle
+        TopAppBar(
+            title = {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Row {
+                        Icon(imageVector = Icons.Filled.Timer,contentDescription = null, tint = GlowGreen)
+                        Spacer(modifier = Modifier.width(5.dp))
+                        AnimatedContent(
+                            targetState = titleText,
+                            transitionSpec = {
+                                (fadeIn(tween(350)) + slideInVertically { -it / 2 }) togetherWith
+                                        (fadeOut(tween(200)) + slideOutVertically { it / 2 })
+                            },
+                            label = "AppBarTitle"
+                        ) { title ->
 
-    // Animation Configuration
-    // We animate the weights. A small non-zero value keeps the button present but tiny.
-    val animSpec = tween<Float>(durationMillis = 500)
+                            Text(
+                                text          = title,
+                                color         = TextPrimary,
+                                fontSize      = 18.sp,
+                                fontWeight    = FontWeight.ExtraBold,
+                                letterSpacing = (-0.3).sp,
+                                textAlign     = TextAlign.Center
+                            )
+                        }
 
-    // If Idle: GiveUp is small (weight 1), Start is big (weight 4)
-    // If Focusing: GiveUp is big (weight 4), Start is tiny (weight 0.01)
-    val giveUpWeight by animateFloatAsState(if (isFocusing) 4f else 1f, animSpec, label = "giveUpWt")
-    val startWeight by animateFloatAsState(if (isIdle) 4f else 0.01f, animSpec, label = "startWt")
-
-    when (timerState) {
-        TimerState.WaitingForBreak -> {
-            // Simple single button for break state
-            Button(
-                onClick = onTakeBreak,
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Cyan),
-                modifier = Modifier.fillMaxWidth().height(56.dp)
-            ) { Text("Take Break (5m)") }
-        }
-        TimerState.OnBreak -> {
-            Text("Enjoy your break!", style = MaterialTheme.typography.titleMedium)
-        }
-        else -> {
-            // The Row containing the two animated buttons
-            Row(
-                modifier = Modifier.fillMaxWidth().height(60.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // --- Give Up Button (Left) ---
-                // We hide the text if the weight is too small to prevent overflow
-                val showGiveUpText = giveUpWeight > 1.5f
-
-                Button(
-                    onClick = onGiveUp,
-                    // Use tertiary (e.g., reddish) color for negative action
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
-                    // Dynamically change shape based on prominence
-                    shape = RoundedCornerShape(if (showGiveUpText) 16.dp else 50.dp),
-                    // Apply the animated weight
-                    modifier = Modifier.weight(giveUpWeight).fillMaxHeight(),
-                    enabled = isFocusing // Only enable give up if actually focusing
-                ) {
-                    AnimatedVisibility(visible = showGiveUpText, enter = fadeIn(), exit = fadeOut()) {
-                        Text("Give Up", maxLines = 1)
                     }
-                    if (!showGiveUpText) {
-                        // Show an "X" icon when small
-                        Icon(Icons.Default.Close, contentDescription = "Cancel")
-                    }
+                    // CHANGE 1: AnimatedContent slides the title vertically on state change
                 }
-
-                // --- Start Button (Right) ---
-                val showStartText = startWeight > 1.5f
-                Button(
-                    onClick = onStart,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    shape = RoundedCornerShape(if (showStartText) 16.dp else 50.dp),
-                    modifier = Modifier.weight(startWeight).fillMaxHeight(),
-                    enabled = isIdle // Only enable start if idle
-                ) {
-                    AnimatedVisibility(visible = showStartText, enter = fadeIn(), exit = fadeOut()) {
-                        Text("Plant Tree (25m)", maxLines = 1)
-                    }
-                }
-            }
-        }
-    }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = FocusBgDeep,
+                scrolledContainerColor = FocusBgDeep
+            ),
+            windowInsets = WindowInsets(0,0,0,0),
+            scrollBehavior = scrollBehavior
+        )
 }
 
 fun formatTime(millis: Long): String {

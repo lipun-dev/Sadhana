@@ -9,16 +9,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -36,7 +30,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.pomodora.model.ResultState
 import com.example.pomodora.ui.theme.MintAccent
@@ -69,7 +62,7 @@ fun LoginScreen(
     // Helper to navigate to dashboard
     val navigateToDashboard = {
         navController.navigate(NavigationItem.Dashboard) {
-            popUpTo(NavigationItem.LoginScreen) { inclusive = true }
+            popUpTo(0) { inclusive = true }
         }
     }
 
@@ -135,7 +128,11 @@ fun LoginScreen(
                 Text("Don't have an account?", color = Color.White.copy(alpha = 0.7f))
                 TextButton(onClick = {
                     viewModel.resetState()
-                    navController.navigate(NavigationItem.SignUpScreen)
+                    navController.navigate(NavigationItem.SignUpScreen){
+                        popUpTo(0){
+                            inclusive = true
+                        }
+                    }
                 }) {
                     Text("Sign Up", color = MintAccent, fontWeight = FontWeight.Bold)
                 }

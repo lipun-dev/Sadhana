@@ -60,7 +60,7 @@ fun SignUpScreen(
 
     val navigateToDashboard = {
         navController.navigate(NavigationItem.Dashboard) {
-            popUpTo(NavigationItem.SignUpScreen) { inclusive = true }
+            popUpTo(0) { inclusive = true }
         }
     }
 
@@ -122,7 +122,11 @@ fun SignUpScreen(
                 Text("Already have an account?", color = Color.White.copy(alpha = 0.7f))
                 TextButton(onClick = {
                     viewModel.resetState()
-                    navController.navigate(NavigationItem.LoginScreen)
+                    navController.navigate(NavigationItem.LoginScreen){
+                        popUpTo(0){
+                            inclusive = true
+                        }
+                    }
                 }) {
                     Text("Login", color = MintAccent, fontWeight = FontWeight.Bold)
                 }

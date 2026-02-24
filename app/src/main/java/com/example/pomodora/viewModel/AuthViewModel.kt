@@ -10,16 +10,24 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class AuthViewModel : ViewModel() {
+class AuthViewModel(private val repository: AuthRepo) : ViewModel() {
 
-    private val repository = AuthRepo()
 
     // Single source of truth for UI State
     private val _authState = MutableStateFlow<ResultState<UserProfile>>(ResultState.Idle)
     val authState: StateFlow<ResultState<UserProfile>> = _authState.asStateFlow()
 
+    private val _profileState = MutableStateFlow<ResultState<UserProfile>>(ResultState.Idle)
+    val profileState: StateFlow<ResultState<UserProfile>> = _profileState.asStateFlow()
     fun isUserLoggedIn(): Boolean {
         return repository.currentUser != null
+    }
+
+    fun loadProfile() {
+        _profileState.value = ResultState.Loading
+        viewModelScope.launch {
+            _profileState.value = repository.getUserProfile()
+        }
     }
 
     fun login(email: String, pass: String) {
@@ -49,6 +57,7 @@ class AuthViewModel : ViewModel() {
     fun logout() {
         repository.signOut()
         _authState.value = ResultState.Idle // Reset state
+        _profileState.value = ResultState.Idle
     }
 
     fun resetState() {

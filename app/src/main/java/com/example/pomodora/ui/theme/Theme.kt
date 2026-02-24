@@ -61,7 +61,7 @@ fun PomoDoraTheme(
         SideEffect {
             val window = (view.context as Activity).window
             // Set status bar color to match background
-            window.statusBarColor = colorScheme.background.toArgb()
+            window.statusBarColor = AppBackground.toArgb()
             // If light theme, make status bar icons dark. If dark theme, make icons light.
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }

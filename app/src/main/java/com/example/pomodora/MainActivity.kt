@@ -11,7 +11,7 @@ import androidx.annotation.RequiresApi
 import com.example.pomodora.services.FocusService
 import com.example.pomodora.ui.theme.PomoDoraTheme
 import com.example.pomodora.view.AppNavigation
-import com.example.pomodora.viewModel.AuthViewModel
+
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.Q)
@@ -25,11 +25,9 @@ class MainActivity : ComponentActivity() {
             Log.e("MainActivity", "Failed to start service: ${e.message}")
         }
         enableEdgeToEdge()
-        val viewModel = AuthViewModel()
-
         setContent {
             PomoDoraTheme {
-                AppNavigation(viewModel = viewModel)
+                AppNavigation()
             }
         }
 
