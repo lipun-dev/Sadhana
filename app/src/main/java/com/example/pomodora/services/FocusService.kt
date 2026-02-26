@@ -116,6 +116,7 @@ class FocusService : Service() {
 
     private fun handleTimerFinished(previousState: TimerState) {
         stopBlockingMonitoring()
+        _timeLeftInMillis.value = 0L
 
         if (previousState == TimerState.Focusing) {
             // 25 mins done! Tree planted.

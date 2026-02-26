@@ -13,7 +13,7 @@ import com.example.pomodora.view.FocusUtil.HandTreeAnimation
 import com.example.pomodora.view.FocusUtil.SaplingAnimation
 
 @Composable
-fun GrowingTreeIcon(progress: Float, timerState: TimerState) {
+fun GrowingTreeIcon(timerState: TimerState) {
 
     val animationPhase = remember(timerState) {
         when(timerState) {

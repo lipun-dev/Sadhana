@@ -17,13 +17,20 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Popup
 import com.example.pomodora.model.FocusEntry
 import com.example.pomodora.ui.theme.AccentGreen
 import com.example.pomodora.ui.theme.CardBorder
@@ -32,12 +39,20 @@ import com.example.pomodora.ui.theme.GlowGreen
 import com.example.pomodora.ui.theme.TextHint
 import com.example.pomodora.ui.theme.TextPrimary
 import com.example.pomodora.ui.theme.TextSecondary
+import java.time.LocalDate
 import java.time.YearMonth
+import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 
 @Composable
 fun YearlyHeatmapCard(entries: List<FocusEntry>,year: Int) {
+
+    val entriesMap = remember(entries) {
+        entries.associate { it.date to it.minutes }
+    }
+
+    var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -97,8 +112,13 @@ fun YearlyHeatmapCard(entries: List<FocusEntry>,year: Int) {
                 modifier = Modifier.weight(1f)
             ) {
                 val months = (1..12).map { YearMonth.of(year, it) }
-                items(months.size) { index ->
-                    MonthGridDark(yearMonth = months[index], allEntries = entries)
+                items(months.size, key = { index -> months[index].monthValue }) { index ->
+                    MonthGridDark(yearMonth = months[index], entriesMap = entriesMap,
+                        selectedDate = selectedDate, // Pass down the state
+                        onDaySelected = { date ->
+                            // Toggle off if clicked again, otherwise select new date
+                            selectedDate = if (selectedDate == date) null else date
+                        })
                 }
             }
         }
@@ -138,7 +158,9 @@ fun YearlyHeatmapCard(entries: List<FocusEntry>,year: Int) {
 
 
 @Composable
-fun MonthGridDark(yearMonth: YearMonth, allEntries: List<FocusEntry>) {
+fun MonthGridDark(yearMonth: YearMonth, entriesMap: Map<LocalDate, Int>,
+                  selectedDate: LocalDate?,
+                  onDaySelected: (LocalDate?) -> Unit) {
     val firstDay     = yearMonth.atDay(1)
     val daysInMonth  = yearMonth.lengthOfMonth()
     val startOffset  = firstDay.dayOfWeek.value - 1
@@ -168,8 +190,7 @@ fun MonthGridDark(yearMonth: YearMonth, allEntries: List<FocusEntry>) {
 
                         if (dayNumber in 1..daysInMonth) {
                             val date = yearMonth.atDay(dayNumber)
-                            val minutes = allEntries.find { it.date == date }?.minutes
-                                ?: 0
+                            val minutes = entriesMap[date] ?: 0
 
                             val cellColor = when {
                                 minutes >= 90 -> GlowGreen
@@ -193,7 +214,7 @@ fun MonthGridDark(yearMonth: YearMonth, allEntries: List<FocusEntry>) {
                                         else Modifier
                                     )
                                     // Added proper click handling modifier
-                                    .clickable { /* Handle cell tap here */ },
+                                    .clickable {onDaySelected(date)},
                                 contentAlignment = Alignment.Center
                             ) {
                                 // Add the date number inside the cell
@@ -203,6 +224,14 @@ fun MonthGridDark(yearMonth: YearMonth, allEntries: List<FocusEntry>) {
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold
                                 )
+
+                                if (selectedDate == date) {
+                                    DayTooltipPopup(
+                                        date = date,
+                                        minutes = minutes,
+                                        onDismiss = { onDaySelected(null) } // Dismiss if clicked outside
+                                    )
+                                }
                             }
                         } else {
                             // Blank spaces must also match the new cell size to keep the grid aligned
@@ -211,6 +240,58 @@ fun MonthGridDark(yearMonth: YearMonth, allEntries: List<FocusEntry>) {
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun DayTooltipPopup(
+    date: LocalDate,
+    minutes: Int,
+    onDismiss: () -> Unit
+) {
+    // Standard popup that draws over the UI hierarchy
+    Popup(
+        alignment = Alignment.TopCenter,
+        // Shifts the tooltip upwards so it hovers slightly above the cell
+        offset = IntOffset(x = 0, y = -110),
+        onDismissRequest = onDismiss
+    ) {
+        val formatter = remember { DateTimeFormatter.ofPattern("dd MMM yyyy") }
+
+        // Time formatting logic
+        val hours = minutes / 60
+        val remainingMins = minutes % 60
+        val timeText = when {
+            minutes == 0 -> "No focus"
+            hours > 0 && remainingMins > 0 -> "${hours}h ${remainingMins}m focus"
+            hours > 0 -> "${hours}h focus"
+            else -> "${remainingMins}m focus"
+        }
+
+        // Tooltip Card UI
+        Column(
+            modifier = Modifier
+                .shadow(12.dp, RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFF0F172A)) // Sleek dark blue/black background
+                .border(1.dp, GlowGreen.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = date.format(formatter),
+                color = TextSecondary,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = timeText,
+                color = if (minutes > 0) GlowGreen else TextSecondary,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }

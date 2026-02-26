@@ -24,8 +24,7 @@ import com.example.pomodora.ui.theme.CardSurface
 
 @Composable
 fun FullTreeAnimation(
-    modifier: Modifier = Modifier,
-    onAnimationEnd: () -> Unit = {}
+    modifier: Modifier = Modifier
 ) {
     val composition by rememberLottieComposition(
         LottieCompositionSpec.Asset("fully_grown_tree_new.json")

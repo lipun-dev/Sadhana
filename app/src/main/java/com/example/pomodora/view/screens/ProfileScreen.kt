@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,7 +34,6 @@ import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -85,31 +85,27 @@ fun ProfileScreen(
     Scaffold(
         containerColor = AppBackground,
         topBar = {
-            Box(
+            Column (
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(AppBackground)
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                IconButton(
-                    onClick = { navController.popBackStack() },
-                    modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(CardSurface)
-                        .border(1.dp, CardBorder, RoundedCornerShape(12.dp))
-                ) {
-                    Icon(Icons.Filled.Person, contentDescription = "Back", tint = TextPrimary)
+                Row {
+                    Icon(Icons.Filled.Person, contentDescription = "Back", tint = GlowGreen)
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text(
+                        "Profile",
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 20.sp,
+                        letterSpacing = 0.5.sp
+                    )
+
                 }
-                Text(
-                    "Profile",
-                    modifier = Modifier.align(Alignment.Center),
-                    color = TextPrimary,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 20.sp,
-                    letterSpacing = 0.5.sp
-                )
+
+
             }
         }
     ) { padding ->

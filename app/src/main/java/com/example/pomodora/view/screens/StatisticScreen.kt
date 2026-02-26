@@ -32,15 +32,16 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import com.example.pomodora.model.FocusEntry
 import com.example.pomodora.ui.theme.AppBackground
 import com.example.pomodora.ui.theme.GlowGreen
@@ -55,7 +56,7 @@ import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StatisticScreen(navController: NavController,viewModel: StatsViewModel) {
+fun StatisticScreen(viewModel: StatsViewModel) {
 
     val weeklyEntries by viewModel.weeklyBarEntries.collectAsStateWithLifecycle()
     val yearlyEntries by viewModel.heatmapEntries.collectAsStateWithLifecycle()
@@ -73,6 +74,11 @@ fun StatisticScreen(navController: NavController,viewModel: StatsViewModel) {
     // Trigger data fetch (assuming current year for demo)
     LaunchedEffect(Unit) {
         viewModel.fetchStats(LocalDate.now().year.toString())
+    }
+
+    val todaysMinutes = remember(weeklyEntries) {
+        val today = LocalDate.now()
+        weeklyEntries.find { it.date == today }?.minutes ?: 0
     }
 
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
@@ -140,7 +146,7 @@ fun StatisticScreen(navController: NavController,viewModel: StatsViewModel) {
             Spacer(modifier = Modifier.height(4.dp))
 
             // ── Hero Summary ──
-            HeroSummaryCard()
+            HeroSummaryCard(todaysMinutes)
 
             // ── Weekly Bar Chart ──
             WeeklyFocusCard(entries = weeklyEntries)
@@ -170,7 +176,8 @@ fun PulsingDot() {
     Box(
         modifier = Modifier
             .size(8.dp)
+            .graphicsLayer { this.alpha = alpha }
             .clip(CircleShape)
-            .background(GlowGreen.copy(alpha = alpha))
+            .background(GlowGreen)
     )
 }

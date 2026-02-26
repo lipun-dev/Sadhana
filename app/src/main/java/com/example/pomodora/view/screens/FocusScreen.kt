@@ -228,7 +228,7 @@ fun TimerSection(
             timerState = timerState
         )
         // Assuming GrowingTreeIcon is defined in your project
-        GrowingTreeIcon(progress = animatedProgress, timerState = timerState)
+        GrowingTreeIcon(timerState = timerState)
     }
 
     Spacer(modifier = Modifier.height(30.dp))

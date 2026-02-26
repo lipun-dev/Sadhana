@@ -136,68 +136,16 @@ fun MainDashboardScreen(
                         ),
                         content = {
                             DashboardTab.entries.forEach { tab ->
-                                val isSelected = pagerState.currentPage == tab.index
-
-                                TooltipBox(
-                                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-                                        TooltipAnchorPosition.Above
-                                    ),
-                                    tooltip = { PlainTooltip { Text(tab.title) } },
-                                    state = rememberTooltipState()
-                                ) {
-                                    ToggleButton(
-                                        checked = isSelected,
-                                        onCheckedChange = {
-                                            if (!isSelected) {
-                                                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
-                                                scope.launch { pagerState.animateScrollToPage(tab.index) }
-                                            }
-                                        },
-                                        modifier = Modifier
-                                            .widthIn(min = 64.dp)
-                                            .height(56.dp)
-                                            .background(
-                                                brush = if (isSelected) ellipticalBrush else SolidColor(Color.Transparent),
-                                                shape = CircleShape
-                                            ),
-                                        shapes = ToggleButtonDefaults.shapes(CircleShape, CircleShape, CircleShape),
-                                        colors = ToggleButtonDefaults.toggleButtonColors(
-                                            containerColor = Color.Transparent,
-                                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            checkedContainerColor = Color.Transparent,
-                                            checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                                        )
-                                    ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.Center,
-                                            modifier = Modifier.padding(horizontal = 4.dp)
-                                        ) {
-                                            Crossfade(targetState = isSelected, label = "icon") { selected ->
-                                                Icon(
-                                                    imageVector = if (selected) tab.selectedIcon else tab.unselectedIcon,
-                                                    contentDescription = tab.title,
-                                                    modifier = Modifier.size(24.dp)
-                                                )
-                                            }
-                                            AnimatedVisibility(
-                                                visible = isSelected,
-                                                enter = expandHorizontally(expandFrom = Alignment.Start) + fadeIn(),
-                                                exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut()
-                                            ) {
-                                                Text(
-                                                    text = tab.title,
-                                                    modifier = Modifier.padding(start = 8.dp),
-                                                    maxLines = 1,
-                                                    softWrap = false,
-                                                    fontSize = 16.sp,
-                                                    lineHeight = 24.sp,
-                                                    overflow = TextOverflow.Clip
-                                                )
-                                            }
-                                        }
+                                OptimizedTabItem(
+                                    tab = tab,
+                                    isSelectedProvider = { pagerState.currentPage == tab.index },
+                                    ellipticalBrush = ellipticalBrush, // Assuming this is defined above
+                                    onClick = {
+                                        // Check happens inside the child now
+                                        haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                        scope.launch { pagerState.animateScrollToPage(tab.index) }
                                     }
-                                }
+                                )
                             }
                         }
                     )
@@ -217,7 +165,7 @@ fun MainDashboardScreen(
             contentPadding = PaddingValues(0.dp) // Reset padding
         ) { pageIndex ->
             when (DashboardTab.getByIndex(pageIndex)) {
-                DashboardTab.Stats -> StatisticScreen(navController,statsViewModel)
+                DashboardTab.Stats -> StatisticScreen(statsViewModel)
                 DashboardTab.Focus -> FocusScreen()
                 DashboardTab.Profile -> ProfileScreen(navController = navController, viewModel = viewModel)
             }
@@ -290,4 +238,71 @@ val ellipticalBrush = object : ShaderBrush() {
     }
 
 
+}
+
+@OptIn( ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun OptimizedTabItem(
+    tab: DashboardTab,
+    isSelectedProvider: () -> Boolean,
+    ellipticalBrush: Brush,
+    onClick: () -> Unit
+) {
+    // 🚀 The state read happens HERE.
+    // This scope will only recompose when this specific tab's selected state changes.
+    val isSelected = isSelectedProvider()
+
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+        tooltip = { PlainTooltip { Text(tab.title) } },
+        state = rememberTooltipState()
+    ) {
+        ToggleButton(
+            checked = isSelected,
+            onCheckedChange = { if (!isSelected) onClick() },
+            modifier = Modifier
+                .widthIn(min = 64.dp)
+                .height(56.dp)
+                .background(
+                    brush = if (isSelected) ellipticalBrush else SolidColor(Color.Transparent),
+                    shape = CircleShape
+                ),
+            shapes = ToggleButtonDefaults.shapes(CircleShape, CircleShape, CircleShape),
+            colors = ToggleButtonDefaults.toggleButtonColors(
+                containerColor = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                checkedContainerColor = Color.Transparent,
+                checkedContentColor = MaterialTheme.colorScheme.onPrimary
+            )
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.padding(horizontal = 4.dp)
+            ) {
+                Crossfade(targetState = isSelected, label = "icon_${tab.title}") { selected ->
+                    Icon(
+                        imageVector = if (selected) tab.selectedIcon else tab.unselectedIcon,
+                        contentDescription = tab.title,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                AnimatedVisibility(
+                    visible = isSelected,
+                    enter = expandHorizontally(expandFrom = Alignment.Start) + fadeIn(),
+                    exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut()
+                ) {
+                    Text(
+                        text = tab.title,
+                        modifier = Modifier.padding(start = 8.dp),
+                        maxLines = 1,
+                        softWrap = false,
+                        fontSize = 16.sp,
+                        lineHeight = 24.sp,
+                        overflow = TextOverflow.Clip
+                    )
+                }
+            }
+        }
+    }
 }
