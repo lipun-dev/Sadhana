@@ -71,4 +71,5 @@ dependencies {
     implementation("androidx.room:room-ktx:2.8.4")
     ksp("androidx.room:room-compiler:2.8.4")
     implementation("androidx.compose.material3:material3-android:1.5.0-alpha04")
+    implementation("com.airbnb.android:lottie-compose:6.6.10")
 }

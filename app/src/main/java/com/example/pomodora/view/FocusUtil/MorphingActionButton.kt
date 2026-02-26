@@ -17,8 +17,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -43,11 +41,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -142,16 +141,35 @@ fun MorphingActionButton(
         modifier = Modifier
             .fillMaxWidth()
             .height(buttonHeight)
-            .scale(entranceScale * pressScale)
-            .clip(RoundedCornerShape(cornerRadius))
-            .background(
-                // Idle gets gradient; all other states use solid containerColor
-                if (isIdle)
-                    Brush.horizontalGradient(listOf(FocusAccentGreen, Color(0xFF50FFAD)))
-                else
-                    Brush.horizontalGradient(listOf(containerColor, containerColor))
-            )
-            .border(1.dp, borderColor, RoundedCornerShape(cornerRadius))
+            .graphicsLayer {
+                val combinedScale = entranceScale * pressScale
+                scaleX = combinedScale
+                scaleY = combinedScale
+                shape = RoundedCornerShape(cornerRadius.toPx())
+                clip = true
+            }
+            // 🚀 OPTIMIZATION: drawBehind prevents recomposition when the color animates
+            .drawBehind {
+                if (isIdle) {
+                    // Draw Gradient for Idle
+                    drawRoundRect(
+                        brush = Brush.horizontalGradient(listOf(FocusAccentGreen, Color(0xFF50FFAD))),
+                        cornerRadius = CornerRadius(cornerRadius.toPx())
+                    )
+                } else {
+                    // Draw solid animated color for others
+                    drawRoundRect(
+                        color = containerColor,
+                        cornerRadius = CornerRadius(cornerRadius.toPx())
+                    )
+                }
+                // Draw Border
+                drawRoundRect(
+                    color = borderColor,
+                    style = Stroke(width = 1.dp.toPx()),
+                    cornerRadius = CornerRadius(cornerRadius.toPx())
+                )
+            }
     ) {
         // ── Content swaps with shared-axis vertical slide ──────────────────
         AnimatedContent(
@@ -304,15 +322,16 @@ private fun BreakPulseContent() {
         ),
         label = "BreakAlpha"
     )
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Box(modifier = Modifier.fillMaxSize().graphicsLayer { this.alpha = alpha },
+        contentAlignment = Alignment.Center) {
         Row(
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("🌿", fontSize = 18.sp, modifier = Modifier.alpha(alpha))
+            Text("🌿", fontSize = 18.sp)
             Text(
                 "Enjoying your break…",
-                color      = FocusBreakBlue.copy(alpha = alpha),
+                color      = FocusBreakBlue,
                 fontWeight = FontWeight.Medium,
                 fontSize   = 15.sp,
                 letterSpacing = 0.3.sp

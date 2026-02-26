@@ -16,7 +16,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,7 +28,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Timer
@@ -49,11 +47,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -86,37 +83,28 @@ fun FocusScreen(
     viewModel: FocusViewModel = viewModel<FocusViewModel>()
 ) {
     val timerState by viewModel.timerState.collectAsState()
-    val timeLeft   by viewModel.timeLeft.collectAsState()
+    val timeLeft   = viewModel.timeLeft.collectAsState()
     val context    = LocalContext.current
 
-    var hasPermissions by remember { mutableStateOf(false) }
+    var hasPermissions by remember { mutableStateOf(true) }
     val lifecycleOwner = LocalLifecycleOwner.current
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                hasPermissions = PermissionHelper.hasUsageStatsPermission(context) &&
+                val isCurrentlyGranted = PermissionHelper.hasUsageStatsPermission(context) &&
                         PermissionHelper.hasOverlayPermission(context)
+
+                // 2. Only update state (and trigger recomposition) if it actually changed
+                if (hasPermissions != isCurrentlyGranted) {
+                    hasPermissions = isCurrentlyGranted
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val totalFocusTime = 25 * 60 * 1000L
-    val totalBreakTime = 5  * 60 * 1000L
-
-    val progress = remember(timeLeft, timerState) {
-        val total   = if (timerState is TimerState.OnBreak) totalBreakTime else totalFocusTime
-        val elapsed = total - timeLeft
-        (elapsed.toFloat() / total).coerceIn(0f, 1f)
-    }
-
-    val animatedProgress by animateFloatAsState(
-        targetValue = progress,
-        animationSpec = tween(300, easing = LinearEasing),
-        label = "RingProgress"
-    )
 
     val isFocusing = timerState is TimerState.Focusing
     val isOnBreak  = timerState is TimerState.OnBreak
@@ -158,30 +146,11 @@ fun FocusScreen(
                     .padding(top = 16.dp, bottom = 100.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-
-                // Timer ring
-                Box(contentAlignment = Alignment.Center) {
-                    PulseRings(color = ringColor, active = isFocusing)
-                    PolishedWaveTimer(
-                        progress   = animatedProgress,
-                        ringColor  = ringColor,
-                        timerState = timerState
-                    )
-                    GrowingTreeIcon(progress = animatedProgress, timerState = timerState)
-                }
-
-                Spacer(modifier = Modifier.height(30.dp))
-
-                PolishedTimerDisplay(
-                    timeString = formatTime(timeLeft),
+                TimerSection(
+                    timeLeftProvider = { timeLeft.value },
                     timerState = timerState,
-                    ringColor  = ringColor
+                    ringColor = ringColor
                 )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                SessionProgressDots(progress = animatedProgress, color = ringColor)
-
                 Spacer(modifier = Modifier.height(20.dp))
 
                 // CHANGE 3: Single morphing button replaces two-button row
@@ -193,26 +162,86 @@ fun FocusScreen(
                     },
                     label = "PermissionSwitch"
                 ) { hasPerm ->
-                    if (!hasPerm) {
-                        PolishedPermissionCard {
-                            if (!PermissionHelper.hasUsageStatsPermission(context))
-                                PermissionHelper.requestUsageStatsPermission(context)
-                            else if (!PermissionHelper.hasOverlayPermission(context))
-                                PermissionHelper.requestOverlayPermission(context)
-                        }
-                    } else {
-                        // CHANGE 3: ONE MorphingActionButton for all states
+                    if (hasPerm) {
+
                         MorphingActionButton(
                             timerState  = timerState,
                             onStart     = { viewModel.startFocus() },
                             onGiveUp    = { viewModel.giveUp() },
                             onTakeBreak = { viewModel.startBreak() }
                         )
+                    } else {
+                        // CHANGE 3: ONE MorphingActionButton for all states
+                        PolishedPermissionCard {
+                            if (!PermissionHelper.hasUsageStatsPermission(context))
+                                PermissionHelper.requestUsageStatsPermission(context)
+                            else if (!PermissionHelper.hasOverlayPermission(context))
+                                PermissionHelper.requestOverlayPermission(context)
+                        }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+fun TimerSection(
+    timeLeftProvider: () -> Long,
+    timerState: TimerState,
+    ringColor: Color
+) {
+    // This is the ONLY scope that recomposes every second
+    val rawTimeLeft = timeLeftProvider()
+
+    val totalFocusTime = 25 * 60 * 1000L
+    val totalBreakTime = 5  * 60 * 1000L
+
+    // FIX: Provide the correct default times if the timer hasn't started yet
+    val effectiveTime = when {
+        rawTimeLeft > 0L -> rawTimeLeft
+        timerState is TimerState.OnBreak || timerState is TimerState.WaitingForBreak -> totalBreakTime
+        timerState is TimerState.Idle -> totalFocusTime // Idle state defaults to 25 mins
+        else -> totalFocusTime
+    }
+
+    val progress = remember(effectiveTime, timerState) {
+        val total = if (timerState is TimerState.OnBreak || timerState is TimerState.WaitingForBreak) totalBreakTime else totalFocusTime
+        val elapsed = total - effectiveTime
+        (elapsed.toFloat() / total).coerceIn(0f, 1f)
+    }
+
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(300, easing = LinearEasing),
+        label = "RingProgress"
+    )
+
+    val isFocusing = timerState is TimerState.Focusing
+
+    // Timer ring
+    Box(contentAlignment = Alignment.Center) {
+        PulseRings(color = ringColor, active = isFocusing)
+        PolishedWaveTimer(
+            progress   = { animatedProgress },
+            ringColor  = ringColor,
+            timerState = timerState
+        )
+        // Assuming GrowingTreeIcon is defined in your project
+        GrowingTreeIcon(progress = animatedProgress, timerState = timerState)
+    }
+
+    Spacer(modifier = Modifier.height(30.dp))
+
+    PolishedTimerDisplay(
+        timeString = { formatTime(effectiveTime) }, // Pass the fixed time here
+        timerState = timerState,
+        ringColor  = { ringColor }
+    )
+
+    Spacer(modifier = Modifier.height(20.dp))
+
+    SessionProgressDots(progress = { animatedProgress }, color = ringColor)
 }
 
 
@@ -278,23 +307,30 @@ fun PulseRings(color: Color, active: Boolean) {
         label = "Alpha2"
     )
 
-    Box(
-        modifier = Modifier.size(300.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .size(300.dp)
-                .scale(scale1)
-                .clip(CircleShape)
-                .border(1.5.dp, color.copy(alpha = alpha1), CircleShape)
+    Canvas(modifier = Modifier.size(300.dp)) {
+        // The code inside this block runs in the Draw phase.
+        // Reading scale1, alpha1, etc., here will ONLY trigger a re-draw,
+        // completely skipping recomposition!
+
+        val center = Offset(size.width / 2, size.height / 2)
+        val baseRadius = size.minDimension / 2
+
+        // Draw Ring 1
+        drawCircle(
+            color = color,
+            radius = baseRadius * scale1,
+            center = center,
+            alpha = alpha1,
+            style = Stroke(width = 1.5.dp.toPx())
         )
-        Box(
-            modifier = Modifier
-                .size(300.dp)
-                .scale(scale2)
-                .clip(CircleShape)
-                .border(1.dp, color.copy(alpha = alpha2), CircleShape)
+
+        // Draw Ring 2
+        drawCircle(
+            color = color,
+            radius = baseRadius * scale2,
+            center = center,
+            alpha = alpha2,
+            style = Stroke(width = 1.dp.toPx())
         )
     }
 }

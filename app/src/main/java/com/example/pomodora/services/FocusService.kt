@@ -83,6 +83,8 @@ class FocusService : Service() {
         stopBlockingMonitoring()
         _timerState.value = TimerState.Idle
 
+        _timeLeftInMillis.value = 0L
+
         // Save "WITHERED" status to Firebase
         serviceScope.launch {
             // Calculate how much time they actually spent before giving up?

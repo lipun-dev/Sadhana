@@ -35,7 +35,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -44,6 +46,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -62,7 +65,7 @@ import kotlin.math.sin
 
 @Composable
 fun PolishedWaveTimer(
-    progress: Float,
+    progress: () -> Float,
     ringColor: Color,
     timerState: TimerState,
     modifier: Modifier = Modifier
@@ -90,8 +93,12 @@ fun PolishedWaveTimer(
     Canvas(
         modifier = modifier
             .size(300.dp)
-            .scale(breathScale)
+            .graphicsLayer {
+                scaleX = breathScale
+                scaleY = breathScale
+            }
     ) {
+        val currentProg = progress()
         // REFINED: Drastically thinner stroke values
         val trackPx     = 4.dp.toPx()  // Was 18.dp
         val wavePx      = 6.dp.toPx()  // Was 20.dp
@@ -104,8 +111,8 @@ fun PolishedWaveTimer(
         val startAngle  = -90f
         val gapDeg      = 12f // Slightly smaller gap for thinner lines
 
-        val trackStart = startAngle + progress * 360f + gapDeg
-        val trackSweep = (360f - progress * 360f) - gapDeg * 2
+        val trackStart = startAngle + currentProg * 360f + gapDeg
+        val trackSweep = (360f - currentProg * 360f) - gapDeg * 2
 
         if (trackSweep > 1f) {
             drawArc(
@@ -119,8 +126,8 @@ fun PolishedWaveTimer(
             )
         }
 
-        if (progress > 0.005f) {
-            val activeSweep = progress * 360f
+        if (currentProg > 0.005f) {
+            val activeSweep = currentProg * 360f
             val circumference = 2 * Math.PI * radius
             val waveCount = (circumference / waveLenPx).toFloat()
             val steps = (activeSweep * 2.5f).toInt().coerceAtLeast(4)
@@ -157,9 +164,9 @@ fun PolishedWaveTimer(
 
 @Composable
 fun PolishedTimerDisplay(
-    timeString: String,
+    timeString: () -> String,
     timerState: TimerState,
-    ringColor: Color
+    ringColor: () ->Color
 ) {
 
     // Subtle scale pop on each second tick
@@ -173,18 +180,29 @@ fun PolishedTimerDisplay(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .clip(RoundedCornerShape(24.dp))
-            .background(
-                Brush.verticalGradient(
-                    listOf(FocusCardSurface, FocusBgSurface)
+            .drawBehind {
+                val dynamicRingColor = ringColor()
+
+                // Draw the vertical gradient background
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        listOf(FocusCardSurface, FocusBgSurface)
+                    )
                 )
-            )
-            .border(
-                width = 1.dp,
-                brush = Brush.horizontalGradient(
-                    listOf(ringColor.copy(0.3f), FocusCardBorder, ringColor.copy(0.3f))
-                ),
-                shape = RoundedCornerShape(24.dp)
-            )
+
+                // Draw the horizontal gradient border
+                drawRoundRect(
+                    brush = Brush.horizontalGradient(
+                        listOf(
+                            dynamicRingColor.copy(0.3f),
+                            FocusCardBorder,
+                            dynamicRingColor.copy(0.3f)
+                        )
+                    ),
+                    cornerRadius = CornerRadius(24.dp.toPx()),
+                    style = Stroke(width = 1.dp.toPx())
+                )
+            }
             .padding(horizontal = 36.dp, vertical = 16.dp)
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -221,12 +239,16 @@ fun PolishedTimerDisplay(
 
             // Time digits
             Text(
-                text       = timeString,
+                text       = timeString(),
                 fontSize   = 52.sp,
                 fontWeight = FontWeight.Black,
                 color      = TextPrimary,
                 letterSpacing = (-1).sp,
-                modifier   = Modifier.scale(digitScale)
+                modifier   = Modifier.graphicsLayer {
+                    // 🚀 OPTIMIZATION 4: Defer scale animation to Draw Phase
+                    scaleX = digitScale
+                    scaleY = digitScale
+                }
             )
         }
     }
@@ -234,29 +256,40 @@ fun PolishedTimerDisplay(
 
 
 @Composable
-fun SessionProgressDots(progress: Float, color: Color) {
+fun SessionProgressDots(progress: () ->Float, color: Color) {
     val segments = 5
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
+    Canvas(
+        modifier = Modifier
+            .height(6.dp)
+            .width((segments * 8 + (segments - 1) * 8 + 16).dp) // Estimate max width
     ) {
-        repeat(segments) { i ->
-            val threshold   = (i + 1).toFloat() / segments
-            val isFilled    = progress >= threshold - (1f / segments)
-            val dotColor    = if (isFilled) color else FocusRingTrack
-            val dotWidth    = if (i == (progress * segments).toInt().coerceIn(0, segments - 1)) 24.dp else 8.dp
-            val animWidth   by animateDpAsState(
-                targetValue    = dotWidth,
-                animationSpec  = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-                label          = "DotWidth$i"
+        val currentProgress = progress()
+        val spacingPx = 8.dp.toPx()
+        val baseWidthPx = 8.dp.toPx()
+        val expandedWidthPx = 24.dp.toPx()
+        val heightPx = 6.dp.toPx()
+
+        var currentX = 0f
+
+        for (i in 0 until segments) {
+            val threshold = (i + 1).toFloat() / segments
+            val isFilled = currentProgress >= threshold - (1f / segments)
+            val dotColor = if (isFilled) color else FocusRingTrack
+
+            // Calculate width without animating in layout phase
+            val isActiveSegment = i == (currentProgress * segments).toInt().coerceIn(0, segments - 1)
+            // Note: If you want smooth width animation here, you can drive it via an Animatable
+            // inside a LaunchedEffect based on the progress, and read its value here.
+            // For raw performance, snapping the active width is 100x cheaper.
+            val dotWidth = if (isActiveSegment) expandedWidthPx else baseWidthPx
+
+            drawRoundRect(
+                color = dotColor,
+                topLeft = Offset(currentX, 0f),
+                size = Size(dotWidth, heightPx),
+                cornerRadius = CornerRadius(heightPx / 2)
             )
-            Box(
-                modifier = Modifier
-                    .height(6.dp)
-                    .width(animWidth)
-                    .clip(RoundedCornerShape(50))
-                    .background(dotColor)
-            )
+            currentX += dotWidth + spacingPx
         }
     }
 }
