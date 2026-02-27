@@ -12,6 +12,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -28,6 +29,12 @@ fun ForestButton(
     isLoading: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+
+    val backgroundBrush = remember {
+        Brush.horizontalGradient(
+            colors = listOf(Color(0xFF86EFAC), Color(0xFF22C55E))
+        )
+    }
     Button(
         onClick = onClick,
         modifier = modifier.height(55.dp),
@@ -40,9 +47,7 @@ fun ForestButton(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(Color(0xFF86EFAC), Color(0xFF22C55E)) // Mint to Green
-                    )
+                    brush = backgroundBrush
                 ),
             contentAlignment = Alignment.Center
         ) {

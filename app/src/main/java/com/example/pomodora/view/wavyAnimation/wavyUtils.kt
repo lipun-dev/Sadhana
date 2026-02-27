@@ -10,16 +10,11 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
@@ -28,72 +23,71 @@ import androidx.compose.ui.graphics.ImageBitmapConfig
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlin.math.PI
 import kotlin.math.sin
 
 
 // --- 2. The Wave Component ---
 @Composable
-fun WavesLoadingIndicator(modifier: Modifier, color: Color, progress: Float) {
-    BoxWithConstraints(modifier = modifier.offset(y = 16.dp), contentAlignment = Alignment.Center) {
-        val constraintsWidth = maxWidth
-        val constraintsHeight = maxHeight
-        val density = LocalDensity.current
-
-        val wavesShader by produceState<Shader?>(initialValue = null, constraintsHeight, constraintsWidth, color, density) {
-            value = withContext(Dispatchers.Default) {
-                createWavesShader(
-                    width = with(density) { constraintsWidth.roundToPx() },
-                    height = with(density) { constraintsHeight.roundToPx() },
-                    color = color
-                )
-            }
-        }
-
-        if (progress > 0f && wavesShader != null) {
-            WavesOnCanvas(shader = wavesShader!!, progress = progress)
-        }
-    }
-}
-
-// --- 3. Drawing Logic (Internal) ---
-@Composable
-private fun WavesOnCanvas(shader: Shader, progress: Float) {
-    val matrix = remember { Matrix() }
-    val paint = remember(shader) {
-        Paint().apply {
-            isAntiAlias = true
-            this.shader = shader
-        }
-    }
+fun WavesLoadingIndicator(modifier: Modifier = Modifier, color: Color, progress: Float) {
 
     val transition = rememberInfiniteTransition(label = "wave")
     val waveShiftRatio by transition.animateFloat(
         initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(2500, easing = LinearEasing)), label = "shift"
+        animationSpec = infiniteRepeatable(tween(2500, easing = LinearEasing)),
+        label = "shift"
     )
     val amplitudeRatio by transition.animateFloat(
         initialValue = 0.005f, targetValue = 0.015f,
-        animationSpec = infiniteRepeatable(tween(3000, easing = FastOutLinearInEasing), RepeatMode.Reverse), label = "amp"
+        animationSpec = infiniteRepeatable(tween(3000, easing = FastOutLinearInEasing), RepeatMode.Reverse),
+        label = "amp"
     )
 
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        drawIntoCanvas {
-            val height = size.height
-            val width = size.width
-            matrix.setScale(1f, amplitudeRatio / 0.09f, 0f, 0.5f * height)
-            matrix.postTranslate(waveShiftRatio * width, (0.5f - progress) * height)
-            shader.setLocalMatrix(matrix)
-            it.drawRect(0f, 0f, width, height, paint)
-        }
-    }
-}
+    // 2. Use Spacer with drawWithCache instead of Canvas + State
+    Spacer(
+        modifier = modifier
+            .drawWithCache {
+                // A. Create Shader only when Size or Color changes
+                val width = size.width.toInt()
+                val height = size.height.toInt()
+                val shader = createWavesShader(width, height, color)
 
+                val paint = Paint().apply {
+                    isAntiAlias = true
+                    this.shader = shader
+                }
+
+                val matrix = Matrix()
+
+                onDrawBehind {
+                    // B. Read Animation Values HERE (Inside Draw Scope only)
+                    // This prevents the Composable from recomposing, only repainting.
+
+                    if (progress > 0f) {
+                        matrix.reset()
+                        // Scale Y based on amplitude
+                        matrix.setScale(1f, amplitudeRatio / 0.09f, 0f, 0.5f * size.height)
+                        // Translate X (movement) and Y (water level/progress)
+                        matrix.postTranslate(
+                            waveShiftRatio * size.width,
+                            (0.5f - progress) * size.height
+                        )
+                        shader.setLocalMatrix(matrix)
+
+                        drawIntoCanvas { canvas ->
+                            canvas.drawRect(0f, 0f, size.width, size.height, paint)
+                        }
+                    }
+                }
+            }
+    )
+}
 private fun createWavesShader(width: Int, height: Int, color: Color): Shader {
+
+    if (width <= 0 || height <= 0) return BitmapShader(
+        ImageBitmap(1, 1, ImageBitmapConfig.Argb8888).asAndroidBitmap(),
+        Shader.TileMode.CLAMP, Shader.TileMode.CLAMP
+    )
     val bitmap = ImageBitmap(width, height, ImageBitmapConfig.Argb8888)
     val canvas = Canvas(bitmap)
     val paint = Paint().apply { strokeWidth = 2f; isAntiAlias = true }

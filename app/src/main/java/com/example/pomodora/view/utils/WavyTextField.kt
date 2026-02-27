@@ -49,6 +49,15 @@ fun WavyTextField(
 ) {
     var isPasswordVisible by remember { mutableStateOf(false) }
 
+    val borderBrush = remember {
+        Brush.verticalGradient(listOf(FieldBorder, Color.Transparent))
+    }
+
+    // OPTIMIZATION: Cache the VisualTransformation
+    val visualTransformation = remember(isPassword, isPasswordVisible) {
+        if (isPassword && !isPasswordVisible) PasswordVisualTransformation() else VisualTransformation.None
+    }
+
 
     Box(
         modifier = Modifier
@@ -58,7 +67,7 @@ fun WavyTextField(
             .border(
                 width = 1.dp,
                 // A subtle gradient border that looks like a reflection
-                brush = Brush.verticalGradient(listOf(FieldBorder, Color.Transparent)),
+                brush = borderBrush,
                 shape = RoundedCornerShape(30.dp)
             )
             .padding(horizontal = 8.dp),
@@ -92,7 +101,7 @@ fun WavyTextField(
                     }
                 }
             } else null,
-            visualTransformation = if (isPassword && !isPasswordVisible) PasswordVisualTransformation() else VisualTransformation.None,
+            visualTransformation = visualTransformation,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
             keyboardActions = KeyboardActions(onDone = { onAction() }, onNext = { onAction() }),
             singleLine = true

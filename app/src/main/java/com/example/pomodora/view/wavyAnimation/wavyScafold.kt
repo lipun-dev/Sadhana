@@ -35,7 +35,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -50,7 +49,6 @@ fun WavyAuthScaffold(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val scrollState = rememberScrollState()
-    val density = LocalDensity.current
 
     // Wave Logic:
     // We keep the wave relatively stable now so it acts as a beautiful header.
