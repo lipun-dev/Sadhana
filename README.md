@@ -63,7 +63,10 @@ By combining the **Pomodoro Technique** with visual negative reinforcement (loss
 
 <div align="center">
 
-<video src="WhatsApp Video 2026-02-28 at 2.mp4" controls width="300"></video>
+
+
+https://github.com/user-attachments/assets/701e57e2-d860-436a-887c-d3135e7749e7
+
 
 
 </div>
