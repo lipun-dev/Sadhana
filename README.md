@@ -10,7 +10,7 @@
 [![Firebase](https://img.shields.io/badge/Backend-Firebase-orange?logo=firebase)](https://firebase.google.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-[Download APK](#) · [Report Bug](https://github.com/lipun-dev/sadhana/issues) · [Request Feature](https://github.com/lipun-dev/sadhana/issues)
+[Download APK](https://github.com/lipun-dev/Sadhana/releases/download/initial_release/app-debug.apk) · [Report Bug](https://github.com/lipun-dev/sadhana/issues) · [Request Feature](https://github.com/lipun-dev/sadhana/issues)
 
 </div>
 
@@ -63,7 +63,8 @@ By combining the **Pomodoro Technique** with visual negative reinforcement (loss
 
 <div align="center">
 
-<video src="Sadhana/WhatsApp Video 2026-02-28 at 2.mp4" controls width="300"></video>
+<video src="WhatsApp Video 2026-02-28 at 2.mp4" controls width="300"></video>
+
 
 </div>
 
