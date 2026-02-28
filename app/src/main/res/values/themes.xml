@@ -2,4 +2,11 @@
 <resources>
 
     <style name="Theme.PomoDora" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#070E08</item>
+
+        <item name="windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+
+        <item name="postSplashScreenTheme">@style/Theme.PomoDora</item>
+    </style>
 </resources>
