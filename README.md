@@ -51,15 +51,21 @@ By combining the **Pomodoro Technique** with visual negative reinforcement (loss
 
 <div align="center">
 
-| Home / Forest | LoginScreen | Warning Overlay | Statistics |
-|:---:|:---:|:---:|:---:|
-| <img src="https://github.com/user-attachments/assets/1cd62d0b-faa9-4c39-aeee-a1883002669a" width="180" alt="Focus Screen"/> | <img src="https://github.com/user-attachments/assets/7c64564b-ad9f-41de-979d-84207e7161dd" width="180" alt="LoginScreen"/> | ![Overlay](https://github.com/user-attachments/assets/YOUR_LINK_3) | ![Stats](https://github.com/user-attachments/assets/YOUR_LINK_4) |
+| Home / Forest | LoginScreen | ProfileScreen | Statistics | SignupScreen
+|:---:|:---:|:---:|:---:|:---:|
+| <img src="https://github.com/user-attachments/assets/1cd62d0b-faa9-4c39-aeee-a1883002669a" width="180" alt="Focus Screen"/> | <img src="https://github.com/user-attachments/assets/7c64564b-ad9f-41de-979d-84207e7161dd" width="180" alt="LoginScreen"/> | <img src="ProfileScreen.jpg" width="180" alt="ProfileScreen"/> | <img src="StatsScreen.jpg" width="180" alt="StatsScreen"/> | <img src="SignupScreen.jpg" width="180" alt="SignupScreen"/> |
 
 </div>
 
-![FocusScreen](https://github.com/user-attachments/assets/1cd62d0b-faa9-4c39-aeee-a1883002669a)
-![LoginScreen](https://github.com/user-attachments/assets/7c64564b-ad9f-41de-979d-84207e7161dd)
+---
 
+### 🎥 App Demo
+
+<div align="center">
+
+<video src="Sadhana/WhatsApp Video 2026-02-28 at 2.mp4" controls width="300"></video>
+
+</div>
 
 ---
 
